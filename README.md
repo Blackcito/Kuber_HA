@@ -52,6 +52,8 @@ En mas detalle la carpeta config, contendra todas las configuraciones sobre red 
 Variables.tf, contendra las variables a usar, siendo en este caso cantidad de workers, control-plane, proxy y las configuraciones de cada uno.
 main.tf, contrae toda la configuracion para el despligue de estas maqunas previamente solicitadas en variables. contiene la configuracion de red, espacio, discos, entre otros.
 
+---
+
 ## 3. Infraestructura con Terraform
 
 
