@@ -25,15 +25,16 @@ Repositorio para desplegar un clúster de Kubernetes altamente disponible, con b
 Desplegar un entorno de Kubernetes HA (alta disponibilidad) autosuficiente, con balanceadores activos/pasivos (HAProxy + Keepalived), almacenamiento distribuido (Longhorn) y ejecución automatizada con Terraform y Ansible.
 
 **Arquitectura:**  
-Incluye 3 nodos control-plane, 2 nodos worker, 2 nodos LB, con una VIP compartida para acceso a API y servicios.  
+Incluye 3 nodos control-plane, 2 nodos worker, 2 nodos LB, con una VIP compartida para acceso a API y servicios.
 Diagrama:  
-![Diagrama general](link-al-diagrama-en-tu-repositorio)
+![Flowchart](https://github.com/user-attachments/assets/5c799269-db9b-4782-962b-677abe39e468)
+
 
 ---
 
 ## 2. Infraestructura con Terraform
 
-Define y provisiona:
+Se define y provisiona:
 
 - Proveedor y variables (p.ej. tamaño VM, red).  
 - Máquinas:
@@ -45,3 +46,12 @@ Ejecute:
 ```bash
 terraform init
 terraform apply
+
+
+En mas detalle la carpeta config, contendra todas las configuraciones sobre red para cada nodo, asi como las configuraciones cloud_init para inciar los OS.
+Variables.tf, contendra las variables a usar, siendo en este caso cantidad de workers, control-plane, proxy y las configuraciones de cada uno.
+main.tf, contrae toda la configuracion para el despligue de estas maqunas previamente solicitadas en variables. contiene la configuracion de red, espacio, discos, entre otros.
+
+## 3. Infraestructura con Terraform
+
+
