@@ -1,0 +1,26 @@
+---
+- name: Instalar dependencias en todos los nodos
+  apt:
+    name:
+      - open-iscsi
+      - nfs-common
+      - util-linux  # Para wipefs
+    state: present
+  when: ansible_os_family == 'Debian'
+
+- name: Limpiar discos en nodos workers (si existen)
+  block:
+    - name: Verificar existencia de discos
+      stat:
+        path: "{{ item }}"
+      register: disk_check
+      loop: "{{ longhorn_disks }}"
+
+    - name: Limpiar firmas de discos
+      command: "wipefs -a {{ item.item }}"
+      loop: "{{ disk_check.results }}"
+      when: item.stat.exists
+
+  when: "'workers' in group_names"
+
+

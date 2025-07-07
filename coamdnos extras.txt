@@ -1,0 +1,24 @@
+longhorn
+
+sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n longhorn-system port-forward service/longhorn-frontend 8080:80
+
+ssh -L 8080:localhost:8080 jose@172.16.25.11 (verificar pagina web)
+
+
+
+
+VERIFICACIONES
+
+
+
+kubernetes:
+
+sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes
+sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf get pods -A
+sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf get cs  
+
+longhorn:
+
+sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n longhorn-system get nodes.longhorn.io
+sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n longhorn-system get volumes.longhorn.io
+sudo kubectl --kubeconfig=/etc/kubernetes/admin.conf -n longhorn-system get pods

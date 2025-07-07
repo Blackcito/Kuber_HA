@@ -1,0 +1,55 @@
+- name: Limpiar Longhorn completamente
+  hosts: master1
+  become: yes
+  tasks:
+
+    - name: Eliminar namespace longhorn-system (forzado)
+      ansible.builtin.shell: |
+        kubectl delete namespace longhorn-system --grace-period=0 --force || true
+      args:
+        executable: /bin/bash
+
+    - name: Esperar hasta que el namespace desaparezca (máximo 2 minutos)
+      ansible.builtin.shell: |
+        for i in {{ range(1, 24) }}; do
+          kubectl get namespace longhorn-system || exit 0
+          sleep 5
+        done
+        exit 1  # Si no desaparece después de 2 minutos, falla
+      register: namespace_cleanup
+      failed_when: namespace_cleanup.rc != 0
+      changed_when: false
+
+    - name: Eliminar finalizers si el namespace sigue atascado
+      ansible.builtin.shell: |
+        kubectl get namespace longhorn-system -o json | \
+          jq '.spec.finalizers = []' | \
+          kubectl replace --raw "/api/v1/namespaces/longhorn-system/finalize" -f - || true
+      args:
+        executable: /bin/bash
+
+    - name: Eliminar CRDs de Longhorn
+      ansible.builtin.shell: |
+        kubectl get crd | grep longhorn | awk '{print $1}' | xargs kubectl delete crd || true
+      args:
+        executable: /bin/bash
+
+    - name: Confirmar que no queden recursos Longhorn (all -A)
+      ansible.builtin.shell: |
+        kubectl get all -A | grep -i longhorn || true
+      register: remaining_resources
+      changed_when: false
+
+    - name: Mostrar recursos restantes (si hay)
+      ansible.builtin.debug:
+        msg: "{{ remaining_resources.stdout_lines }}"
+
+    - name: Confirmar que no queden CRDs Longhorn
+      ansible.builtin.shell: |
+        kubectl get crd | grep -i longhorn || true
+      register: remaining_crds
+      changed_when: false
+
+    - name: Mostrar CRDs restantes (si hay)
+      ansible.builtin.debug:
+        msg: "{{ remaining_crds.stdout_lines }}"

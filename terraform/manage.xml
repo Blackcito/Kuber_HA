@@ -1,0 +1,7 @@
+<network connections='1'>
+  <name>manage</name>
+  <forward mode="nat"/>
+  <bridge name='virbr2' stp='on' delay='0'/>
+  <ip address='172.16.25.1' netmask='255.255.255.0'>
+  </ip>
+</network>

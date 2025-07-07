@@ -1,0 +1,41 @@
+- name: Crear namespace longhorn-system
+  command: kubectl --kubeconfig={{ kubeconfig_path }} create namespace longhorn-system
+  ignore_errors: yes
+
+- name: Aplicar manifiestos de Longhorn
+  command: kubectl --kubeconfig={{ kubeconfig_path }} apply -f https://raw.githubusercontent.com/longhorn/longhorn/v1.9.0/deploy/longhorn.yaml
+  register: apply_result
+  until: apply_result.rc == 0
+  retries: 5
+  delay: 10
+
+- name: Esperar a que Longhorn UI esté listo
+  command: kubectl --kubeconfig={{ kubeconfig_path }} -n longhorn-system rollout status deployment/longhorn-ui --timeout=300s
+  register: rollout
+  until: rollout.rc == 0
+  retries: 10
+  delay: 15
+
+- name: Obtener nodos del cluster
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Node
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: k8s_nodes
+
+- name: Obtener nombres de nodos worker
+  set_fact:
+    worker_nodes: >-
+      {{
+        k8s_nodes.resources
+        | selectattr('metadata.labels', 'defined')
+        | rejectattr('metadata.labels', 'contains', 'node-role.kubernetes.io/control-plane')
+        | map(attribute='metadata.name')
+        | list
+      }}
+
+- name: Activar discos Longhorn en nodos
+  command: >
+    kubectl --kubeconfig={{ kubeconfig_path }} -n longhorn-system patch nodes.longhorn.io {{ item }} --type merge -p
+    '{{"spec": { "disks": {"/dev/vdb": { "path": "/dev/vdb", "allowScheduling": true }, "/dev/vdc": { "path": "/dev/vdc", "allowScheduling": true } } } }}'
+  loop: "{{ worker_nodes }}"

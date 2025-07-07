@@ -1,0 +1,12 @@
+- name: Instalar paquetes kubernetes
+  include_tasks: prepare.yml
+
+
+- name: Desactivar Swap
+  include_tasks: Desactivate_swap.yml
+
+
+- name: Instalar Conteinerd
+  include_tasks: ins_conteinerd.yml
+
+

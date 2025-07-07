@@ -1,0 +1,9 @@
+<network connections='1'>
+  <name>netstack</name>
+  <uuid>50374e8e-86b5-4915-81f1-178ef255e3f3</uuid>
+  <bridge name='virbr3' stp='on' delay='0'/>
+  <mac address='52:54:00:52:5d:c7'/>
+  <domain name='netstack'/>
+  <ip address='172.24.4.254' netmask='255.255.255.0'>
+  </ip>
+</network>

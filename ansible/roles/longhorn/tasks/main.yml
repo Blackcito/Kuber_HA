@@ -1,0 +1,9 @@
+---
+- name: Ejecutar tareas de prerrequisitos
+  include_tasks: prereq.yml
+  tags: prereq
+
+- name: Instalar y configurar Longhorn
+  include_tasks: install.yml
+  tags: install
+  when: inventory_hostname == groups['control'][0]  # Solo en primer master

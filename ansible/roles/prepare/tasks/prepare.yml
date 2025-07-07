@@ -1,0 +1,53 @@
+---
+
+- name: Instalar dependencias necesarias
+  ansible.builtin.apt:
+    name: 
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - python3
+      - python3-pip
+    state: present
+    update_cache: yes
+
+- name: Install k8s client libraries on control nodes
+  pip:
+    name:
+      - kubernetes
+    executable: pip3
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['control'] }}"
+
+- name: Crear directorio para claves APT
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+
+- name: Descargar clave pública de Kubernetes
+  ansible.builtin.get_url:
+    url: https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key
+    dest: /tmp/kubernetes-release.key
+    mode: '0644'
+
+- name: Convertir clave a formato GPG
+  ansible.builtin.command:
+    cmd: gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/kubernetes-release.key
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+- name: Agregar repositorio de Kubernetes
+  ansible.builtin.shell: |
+    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+
+- name: Actualizar caché de APT
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Instalar Kubernetes (kubeadm, kubelet, kubectl)
+  ansible.builtin.apt:
+    name: 
+      - kubeadm
+      - kubelet
+      - kubectl
+    state: present

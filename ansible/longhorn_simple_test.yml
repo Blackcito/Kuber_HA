@@ -1,0 +1,89 @@
+---
+- name: Crear PVC, Pod nginx y Service NodePort
+  hosts: master1
+  become: yes
+  gather_facts: no
+  vars:
+    kubeconfig_path: /etc/kubernetes/admin.conf
+    nodeport: 30080  # Puerto externo para nginx, puedes cambiarlo si quieres
+
+  tasks:
+    - name: Crear PVC para nginx
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: nginx-pvc
+            namespace: default  
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            resources:
+              requests:
+                storage: 1Gi
+            storageClassName: longhorn
+
+    - name: Desplegar nginx con PVC
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: nginx-test
+            namespace: default  
+            labels:
+              app: nginx-test
+          spec:
+            containers:
+              - name: nginx
+                image: nginx:latest
+                ports:
+                  - containerPort: 80
+                volumeMounts:
+                  - mountPath: "/usr/share/nginx/html"
+                    name: nginx-storage
+            volumes:
+              - name: nginx-storage
+                persistentVolumeClaim:
+                  claimName: nginx-pvc
+
+    - name: Crear Service NodePort para nginx
+      kubernetes.core.k8s:
+        kubeconfig: "{{ kubeconfig_path }}"
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: nginx-service
+            namespace: default  
+          spec:
+            selector:
+              app: nginx-test
+            ports:
+              - protocol: TCP
+                port: 80
+                targetPort: 80
+                nodePort: "{{ nodeport }}"
+            type: NodePort
+
+    - name: Esperar que nginx esté corriendo
+      kubernetes.core.k8s_info:
+        kubeconfig: "{{ kubeconfig_path }}"
+        kind: Pod
+        namespace: default
+        name: nginx-test
+      register: pod_info
+      until: pod_info.resources and pod_info.resources[0].status.phase == "Running"
+      retries: 20
+      delay: 5
+
+    - name: Mostrar mensaje final con URL para acceder
+      debug:
+        msg: |
+          nginx desplegado y accesible en cualquier nodo del cluster en el puerto {{ nodeport }}.
+          Ejemplo: http://<IP-de-un-worker>:{{ nodeport }}

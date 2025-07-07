@@ -1,0 +1,7 @@
+---
+- name: Verificar conectividad SSH a control-planes
+  hosts: control-plane
+  gather_facts: no
+  tasks:
+    - name: Ping de Ansible (módulo ping)
+      ansible.builtin.ping:

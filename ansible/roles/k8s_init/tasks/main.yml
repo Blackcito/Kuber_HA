@@ -1,0 +1,31 @@
+---
+- name: Instalar dependencias de Kubernetes
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+    state: present
+    update_cache: yes
+
+- name: Añadir clave GPG de Kubernetes
+  ansible.builtin.apt_key:
+    url: https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key
+    state: present
+
+- name: Añadir repositorio de Kubernetes
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+    state: present
+    filename: kubernetes
+
+- name: Instalar componentes de Kubernetes
+  ansible.builtin.apt:
+    name:
+      - kubelet=1.29.*
+      - kubeadm=1.29.*
+      - kubectl=1.29.*
+    state: present
+    allow_downgrade: yes
+

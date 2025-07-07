@@ -1,0 +1,49 @@
+---
+- name: Resetear cualquier estado previo de Kubernetes
+  ansible.builtin.command: kubeadm reset -f
+  when: inventory_hostname != 'master1'
+  become: true
+  ignore_errors: true
+
+- name: Eliminar configuraciones existentes
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  with_items:
+    - /etc/kubernetes/admin.conf
+    - /etc/kubernetes/kubelet.conf
+    - /etc/kubernetes/bootstrap-kubelet.conf
+    - /etc/kubernetes/pki
+  when: inventory_hostname != 'master1'
+  become: true
+
+- name: Leer archivo de variables
+  ansible.builtin.slurp:
+    src: /tmp/kubeadm_join_vars.txt
+  register: kubeadm_vars
+  when: inventory_hostname != 'master1'
+
+- name: Establecer token y hash
+  ansible.builtin.set_fact:
+    kubeadm_token: "{{ (kubeadm_vars.content | b64decode).splitlines() | select('search', '^kubeadm_token=') | first | regex_replace('^kubeadm_token=', '') }}"
+    discovery_hash: "{{ (kubeadm_vars.content | b64decode).splitlines() | select('search', '^discovery_hash=') | first | regex_replace('^discovery_hash=', '') }}"
+    certificate_key: "{{ (kubeadm_vars.content | b64decode).splitlines() | select('search', '^certificate_key=') | first | regex_replace('^certificate_key=', '') }}"
+  when: inventory_hostname != 'master1'
+
+
+- name: Unirse como nodo control
+  ansible.builtin.command: >
+    kubeadm join {{ vip }}:6443
+    --token {{ kubeadm_token }}
+    --discovery-token-ca-cert-hash {{ discovery_hash }}
+    --control-plane
+    --certificate-key {{ certificate_key }}
+    --v=5
+  when: inventory_hostname in groups['control'] and inventory_hostname != 'master1'
+
+- name: Unirse como nodo worker
+  ansible.builtin.command: >
+    kubeadm join {{ vip }}:6443
+    --token {{ kubeadm_token }}
+    --discovery-token-ca-cert-hash {{ discovery_hash }}
+  when: inventory_hostname in groups['worker']

@@ -1,0 +1,61 @@
+- name: Inicializar cluster de Kubernetes
+  ansible.builtin.command: >
+    kubeadm init
+    --control-plane-endpoint "{{ vip }}"
+    --pod-network-cidr=192.168.0.0/16
+    --cri-socket=unix:///run/containerd/containerd.sock
+    --upload-certs
+    --ignore-preflight-errors=all
+  register: kubeadm_init
+  changed_when: false
+
+- name: Extraer certificate-key generado por --upload-certs
+  ansible.builtin.command: kubeadm init phase upload-certs --upload-certs
+  register: cert_key
+  changed_when: false
+
+- name: Crear directorio .kube
+  ansible.builtin.file:
+    path: /home/{{ ansible_user }}/.kube
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0755
+
+- name: Copiar kubeconfig desde el nodo
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: /home/{{ ansible_user }}/.kube/config
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: 0600
+    remote_src: yes
+
+- name: Generar token de unión
+  ansible.builtin.command: kubeadm token create --print-join-command
+  register: join_command
+  changed_when: false
+
+- name: Asegurar permisos en certificados etcd
+  ansible.builtin.file:
+    path: /etc/kubernetes/pki/etcd
+    state: directory
+    owner: root
+    group: root
+    mode: '0700'
+  become: true
+
+- name: Distribuir vars de unión (token, hash, cert-key limpio)
+  ansible.builtin.copy:
+    content: |
+      kubeadm_token={{ join_command.stdout.split('--token')[1].split()[0] | trim }}
+      discovery_hash={{ join_command.stdout.split('--discovery-token-ca-cert-hash')[1].split()[0] | trim }}
+      certificate_key={{ cert_key.stdout | regex_search('([0-9a-f]{64})') }}
+    dest: "/tmp/kubeadm_join_vars.txt"
+    owner: root
+    group: root
+    mode: '0600'
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['k8s_machines'] | difference(['master1']) }}"
+  run_once: true
+

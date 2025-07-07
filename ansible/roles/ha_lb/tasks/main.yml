@@ -1,0 +1,42 @@
+---
+- name: Instalar HAProxy y Keepalived
+  ansible.builtin.package:
+    name:
+      - haproxy
+      - keepalived
+    state: present
+
+- name: Habilitar binding a IP no-local
+  ansible.builtin.sysctl:
+    name: net.ipv4.ip_nonlocal_bind
+    value: '1'
+    state: present
+    reload: yes
+
+- name: Configurar HAProxy
+  ansible.builtin.template:
+    src: haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Reiniciar y habilitar HAProxy
+  ansible.builtin.service:
+    name: haproxy
+    state: restarted
+    enabled: true
+
+- name: Configurar Keepalived
+  ansible.builtin.template:
+    src: keepalived.conf.j2
+    dest: /etc/keepalived/keepalived.conf
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Reiniciar y habilitar Keepalived
+  ansible.builtin.service:
+    name: keepalived
+    state: restarted
+    enabled: true

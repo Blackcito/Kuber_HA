@@ -1,0 +1,78 @@
+---
+- name: Desinstalar Kubernetes completamente
+  hosts: k8s_machines
+  become: true
+  tasks:
+    - name: Resetear el cluster con kubeadm
+      ansible.builtin.command: kubeadm reset -f
+      ignore_errors: true
+
+    - name: Detener kubelet y containerd
+      ansible.builtin.systemd:
+        name: "{{ item }}"
+        state: stopped
+        enabled: no
+      loop:
+        - kubelet
+        - containerd
+      ignore_errors: true
+
+    - name: Desinstalar paquetes de Kubernetes
+      ansible.builtin.apt:
+        name:
+          - kubeadm
+          - kubelet
+          - kubectl
+          - kubernetes-cni
+          - cri-tools
+        state: absent
+        purge: yes
+      ignore_errors: true
+
+    - name: Eliminar repositorio y clave GPG de Kubernetes
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /"
+        state: absent
+        filename: kubernetes
+      ignore_errors: true
+
+    - name: Eliminar claves GPG
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        state: absent
+      ignore_errors: true
+
+    - name: Eliminar archivos y configuraciones de Kubernetes
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - /etc/kubernetes
+        - /var/lib/etcd
+        - /var/lib/kubelet
+        - /var/lib/cni
+        - /etc/cni
+        - /opt/cni
+        - /root/.kube
+        - /home/{{ ansible_user }}/.kube
+      ignore_errors: true
+
+    - name: Eliminar redes CNI (puentes y veth)
+      ansible.builtin.shell: |
+        ip link delete cni0 || true
+        ip link delete flannel.1 || true
+        ip link delete docker0 || true
+        ip link delete kube-bridge || true
+      ignore_errors: true
+
+    - name: Limpiar reglas iptables relacionadas a Kubernetes
+      ansible.builtin.shell: |
+        iptables -F
+        iptables -t nat -F
+        iptables -t mangle -F
+        iptables -X
+      ignore_errors: true
+
+    - name: Limpiar configuración de red (sysctl)
+      ansible.builtin.shell: sysctl --system
+      ignore_errors: true

@@ -1,0 +1,2 @@
+vip: "{{ hostvars[groups['vip'][0]]['vip'] }}"
+masters: "{{ groups['control'] | map('extract', hostvars, 'ansible_host') | list }}"

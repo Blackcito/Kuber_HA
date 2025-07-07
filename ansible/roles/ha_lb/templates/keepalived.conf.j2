@@ -1,0 +1,39 @@
+global_defs {
+    router_id PROC_{{ inventory_hostname }}
+}
+
+vrrp_script chk_haproxy {
+    script "systemctl is-active haproxy"
+    interval 2
+    weight -2
+    fall 2
+    rise 2
+}
+
+{% set peer = (groups['proxy'] | difference([inventory_hostname]))[0] %}
+
+vrrp_instance VI_1 {
+    state {{ hostvars[inventory_hostname]['state'] }}
+    interface {{ ansible_default_ipv4.interface }}
+    virtual_router_id 51
+    priority {{ hostvars[inventory_hostname]['priority'] }}
+    advert_int 1
+
+    authentication {
+        auth_type PASS
+        auth_pass secret
+    }
+
+    unicast_src_ip {{ hostvars[inventory_hostname]['ip'] }}
+    unicast_peer {
+      {{ hostvars[peer]['ip'] }}
+    }
+
+    virtual_ipaddress {
+        {{ vip }}/24
+    }
+
+    track_script {
+        chk_haproxy
+    }
+}

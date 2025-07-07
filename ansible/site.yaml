@@ -1,0 +1,71 @@
+- name: Preparar nodos
+  hosts: k8s_machines
+  become: yes
+  tags: [prepare]
+  roles:
+    - prepare
+
+- name: Configurar nombres de host
+  hosts: k8s_machines
+  become: yes
+  tags: [hosts]
+  roles:
+    - hosts_config
+
+
+- name: Configurar HAProxy + Keepalived
+  hosts: lb  # Grupo lb ahora apunta a proxy
+  become: yes
+  tags: [lb_setup]
+  roles:
+    - ha_lb
+
+- name: Preinstalación de Kubernetes
+  hosts: k8s_machines
+  become: yes
+  tags: [k8s_init]
+  roles:
+    - k8s_init
+
+- name: Inicializar cluster Kubernetes
+  hosts: master1
+  become: yes
+  tags: [k8s_init]
+  roles:
+    - k8s_init_master
+  vars:
+    vip: "172.16.25.250"
+
+- name: Instalar Calico y Dashboard
+  hosts: master1
+  become: yes
+  tags: [calico]
+  roles:
+    - calico_dashboard
+
+- name: Unir nodos al cluster
+  hosts: k8s_machines:!master1
+  become: yes
+  tags: [k8s_join]
+  roles:
+    - k8s_join
+  vars:
+    vip: "172.16.25.250"
+
+- name: Prerrequisitos para Longhorn
+  hosts: k8s_machines
+  become: yes
+  tags: [longhorn-prereq]
+  roles:
+    - role: longhorn
+      tasks_from: prereq
+
+- name: Instalar Longhorn
+  hosts: master1
+  become: yes
+  tags: [longhorn-install]
+  roles:
+    - role: longhorn
+      tasks_from: install
+      vars:
+        kubeconfig_path: /etc/kubernetes/admin.conf
