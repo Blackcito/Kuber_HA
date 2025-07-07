@@ -158,6 +158,7 @@ ansible-playbook -i hosts.ini site.yml
 * [HAProxy Documentation](https://www.haproxy.org/)
 * [Keepalived Documentation](https://keepalived.org/)
 * [Terraform Documentation](https://developer.hashicorp.com/terraform/docs)
+* [kubesphere](https://kubesphere.io/docs/v3.4/installing-on-linux/high-availability-configurations/set-up-ha-cluster-using-keepalived-haproxy/)
 
 ---
 
